@@ -25,7 +25,7 @@ import org.springframework.web.servlet.view.RedirectView;
 
 import java.io.*;
 import java.security.SecureRandom;
-
+import java.nio.file.Paths;
 import static org.apache.commons.codec.binary.Base64.decodeBase64;
 
 @RestController
@@ -95,7 +95,15 @@ public class UserController {
                     extension = ".jpg";
                     break;
             }
-            String imageFile = FileUtils.getInstance().getUserImagePath(request.getRemoteUser()) + extension;
+            String userImagePath = FileUtils.getInstance().getUserImagePath(request.getRemoteUser());
+            if (!isValidImagePath(userImagePath)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+            String imageFile = userImagePath + extension;
+            final ByteArrayResource inputStream = new ByteArrayResource(fileCache.getFileBytes(imageFile));
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+            String imageFile = userImagePath + extension;
             final ByteArrayResource inputStream = new ByteArrayResource(fileCache.getFileBytes(imageFile));
             return ResponseEntity.status(HttpStatus.OK).contentLength(inputStream.contentLength()).body(inputStream);
         } catch (Exception e) {
@@ -141,8 +149,21 @@ public class UserController {
     private User getUser(HttpServletRequest request) {
         SessionHeader sessionHeader = getSessionHeader(request);
         if (sessionHeader == null) return null;
-        Session session = sessionsRepository.findBySessionId(sessionHeader.getSessionId());
+    private boolean isValidImagePath(String path) {
+        // Implement validation logic to ensure the path is safe and does not contain any illegal characters or sequences
+        // For example, check for '..' or other path traversal patterns
+        return path != null && !path.contains("..");
+    }
+}
         if (session != null) return session.getUser();
         return null;
+    }
+    private boolean isValidPath(String path) {
+        try {
+            Paths.get(path);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
